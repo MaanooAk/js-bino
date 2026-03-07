@@ -64,4 +64,13 @@ class DebugBinaryWriter {
         this.entry()
         return this.lines.join("\n")
     }
+
+    static encode(value) {
+        const config = bino_config()
+        const writer = config.BinaryWriter
+        config.BinaryWriter = DebugBinaryWriter
+        const layout = bino_encode(value)
+        config.BinaryWriter = writer
+        return layout
+    }
 }

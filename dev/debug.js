@@ -54,7 +54,7 @@ function test_value(value, payload = skip, condition) {
     // console.log(value)
     // buffer_print(encoded)
     // console.log(decoded)
-    // console.log("\n", layout_value(value))
+    // console.log("\n", DebugBinaryWriter.encode(value))
 
     if (!check_redo(encoded, decoded)) {
         console.error("value:", value, decoded)
@@ -74,17 +74,8 @@ function test_value(value, payload = skip, condition) {
     }
 }
 
-function layout_value(value) {
-    const config = bino_config()
-    const writer = config.BinaryWriter
-    config.BinaryWriter = DebugBinaryWriter
-    const layout = bino_encode(value)
-    config.BinaryWriter = writer
-    return layout
-}
-
 function debug_value(value, expected) {
-    const layout = layout_value(value)
+    const layout = DebugBinaryWriter.encode(value)
 
     if (!expected) {
         console.log()
