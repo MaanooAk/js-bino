@@ -5,8 +5,8 @@
  * repo: https://github.com/MaanooAk/js-bino
  */
 
-function bino_config() {
-    if (bino_config.config) return bino_config.config
+function bino_config(reset = false) {
+    if (bino_config.config && !reset) return bino_config.config
 
     const refs = new Map()
     const handlers = new Map()
@@ -84,6 +84,8 @@ function bino_config() {
             return o
         }
 
+        entry() {}
+
         byte(value) { const o = this.inc(1); this.view.setUint8(o, value) }
         char(value) { const o = this.inc(1); this.view.setUint8(o, value.charCodeAt(0)); return this }
 
@@ -106,6 +108,10 @@ function bino_config() {
             this.len(array.byteLength, type1, type2);
             const o = this.inc(array.byteLength)
             new Uint8Array(this.view.buffer, o).set(array)
+        }
+
+        output(length) {
+            return this.view.buffer.slice(0, length)
         }
     }
 
@@ -265,6 +271,7 @@ function bino_encode(value) {
 
     function output(value) {
         const type = typeof value
+        writer.entry()
 
         if (type === "number") {
             if (Number.isSafeInteger(value)) {
@@ -334,7 +341,7 @@ function bino_encode(value) {
     writer.offset = offset_length
     writer.int32(length)
 
-    return writer.view.buffer.slice(0, length)
+    return writer.output(length)
 }
 
 function bino_encode64(value, base64_options) {
