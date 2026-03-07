@@ -16,6 +16,8 @@ class DebugBinaryWriter {
     entry() {
         if (this.index >= 0) {
             const lower = this.line[0].toLowerCase()
+            if (lower == 'p') this.comments.push(`object desc`)
+            if (lower == 'e') this.comments.push(`dict desc`)
             if (lower == 'n') this.comments.push(`class ${this.line[1].substr(1, this.line[1].length - 2)}`)
             if (this.line.length > 30) {
                 this.comments.push(`${this.line.length - 30} more`)

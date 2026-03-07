@@ -71,9 +71,14 @@ Types:
 - 'c' byte = string
 - 's/S' len byte = string
 - 'a/A' len ids = array
+
 - 'd/D' len id-pairs (key-value) = dictionary
-- 'o/O' len id (class) id-pairs (field-value) = object 
+- 'o'   id (desc) ids (values) = object 
+- 'e/E' len ids (fields)            = dictionary desc
+- 'p/P' len id (class) ids (fields) = class desc
+- 'm/m' len id (class) ids (data) = custom
 - 'n/N' len chars = class name
+
 - 'y/Y' len chars = symbol name
 - 'g/G' len chars = big int
 - 'l/L' len chars = lambda

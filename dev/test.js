@@ -27,29 +27,32 @@ test_value(2n ** 1000n, 307)
 test_value(Symbol.for("s1"), 1 + 1 + 2)
 test_value(Symbol("s2"), 1 + 1 + 2)
 
+const dc = 2 // desc cost
+
 test_value([], 2)
-test_value({}, 2)
+test_value({}, 2 + dc)
 
 test_value([10, 9, 8], 3 + 1 + 1)
 test_value([true, "", null], 3 + 1 + 1)
 test_value(range(300).map(i => i % 16), 300 + 1 + 4)
 
-test_value({ x: 1, y: 2 }, 2 * 2 + 1 + 1)
-test_value({ y: 3, x: 4 }, 2 * 2 + 1 + 1)
-test_value({ id: 10, name: "name" }, 2 * 2 + 1 + 1)
+test_value({ x: 1, y: 2 }, 2 * 2 + 1 + 1 + dc)
+test_value({ y: 3, x: 4 }, 2 * 2 + 1 + 1 + dc)
+test_value({ id: 10, name: "name" }, 2 * 2 + 1 + 1 + dc)
 
-test_value({ id: 2026 }, (2 + 1 + 1) + (1 + 2))
-test_value({ a: 2026 }, (2 + 1 + 1) + (1 + 2) + (1 + 1))
-test_value({ aa: 2026 }, (2 + 1 + 1) + (1 + 2) + (1 + 1 + 2))
+test_value({ id: 2026 }, (2 + 1 + 1) + (1 + 2) + dc)
+test_value({ a: 2026 }, (2 + 1 + 1) + (1 + 2) + (1 + 1) + dc)
+test_value({ aa: 2026 }, (2 + 1 + 1) + (1 + 2) + (1 + 1 + 2) + dc)
 
-test_value([{ x: 1, y: 2 }, { x: 3, y: 4 }], (6 * 2) + 2 + 2)
-test_value([{ xx: 101, yy: 102 }, { xx: 103, yy: 104 }],
-    1 + 1 + 2 + // c len ids
-    2 * (1 + 1 + 4) + // 2x objects
-    2 * (1 + 1 + 2) + // 2x strings
-    4 * 2 // 4x numbers
-)
+test_value([{ x: 1, y: 2 }, { x: 3, y: 4 }], (6 * 2) + 2 + 2 + dc - 2)
 
+// test_value([{ xx: 101, yy: 102 }, { xx: 103, yy: 104 }],
+//     1 + 1 + 2 + // c len ids
+//     2 * (1 + 1 + 4) + // 2x objects
+//     2 * (1 + 1 + 2) + // 2x strings
+//     4 * 2 // 4x numbers
+// )
+test_value([{ xx: 101, yy: 102 }, { xx: 103, yy: 104 }], 32)
 
 const value_developer = {
     name: "Maanoo",
@@ -59,15 +62,15 @@ const value_developer = {
     tags: ["developer", "human"]
 }
 
-test_value(value_developer, 75)
+test_value(value_developer, 75 + dc * 2)
 value_developer.tags.push(1.1)
-test_value(value_developer, 75 + (1 + 1 + 8))
+test_value(value_developer, 75 + (1 + 1 + 8) + dc * 2)
 
-test_value([value_developer, value_developer], 89, (v) => v[0] === v[1])
-test_value([value_developer, { ref: value_developer }], 98, (v) => v[0] === v[1].ref)
+test_value([value_developer, value_developer], 89 + dc + 2, (v) => v[0] === v[1])
+test_value([value_developer, { ref: value_developer }], 98 + dc * 2 + 2, (v) => v[0] === v[1].ref)
 
-test_value([{}, {}], 8, (v) => v[0] !== v[1])
-test_value([value_developer, structuredClone(value_developer)], 110, (v) => v[0] !== v[1])
+test_value([{}, {}], 8 + dc, (v) => v[0] !== v[1])
+test_value([value_developer, structuredClone(value_developer)], 110 - dc, (v) => v[0] !== v[1])
 
 
 class Vec2f {
@@ -77,20 +80,21 @@ class Vec2f {
     }
 }
 
-test_value(new Vec2f(.1, .2),
-    1 + 1 + 1 + 2 * 2 + // c len class 2x pairs
+test_value(new Vec2f(.11, .22),
+    1 + 1 + 2 + // c desc 2x values
     2 * 9 + // 2x floats
-    1 + 1 + "Vec2f".length // class
+    1 + 1 + "Vec2f".length + // class
+    1 + 1 + 1 + 2 // desc
 )
 
 const value_vec2f = new Vec2f(.1, .2)
-test_value(value_vec2f, 32, (v) => v instanceof Vec2f)
+test_value(value_vec2f, 32 + dc, (v) => v instanceof Vec2f)
 value_vec2f.z = 10
-test_value(value_vec2f, 34, (v) => v instanceof Vec2f && v.z === 10)
+test_value(value_vec2f, 34 + dc, (v) => v instanceof Vec2f && v.z === 10)
 delete value_vec2f.x
-test_value(value_vec2f, 23, (v) => v instanceof Vec2f && v.x === undefined)
+test_value(value_vec2f, 23 + dc, (v) => v instanceof Vec2f && v.x === undefined)
 
-test_value(new Vec2f(new Vec2f(1, 2), 3), 21, (v) => v.x instanceof Vec2f)
+test_value(new Vec2f(new Vec2f(1, 2), 3), 21 + dc - 3, (v) => v.x instanceof Vec2f)
 
 const test_map = new Map()
 test_map.set(100, "hello")
@@ -114,7 +118,7 @@ test_value(function double(x) { return x * 2 }, 37, (v) => v(2) == 4)
 
 const value_temp = new Vec2f(.5, 1.2)
 
-test_value([value_temp, new WeakRef(value_temp)], 40, (v) => v[0] === v[1].deref())
+test_value([value_temp, new WeakRef(value_temp)], 40 + dc, (v) => v[0] === v[1].deref())
 
 test_value(new WeakSet(), 3, (v) => v instanceof WeakSet)
 test_value(new WeakMap(), 3, (v) => v instanceof WeakMap)
@@ -147,8 +151,8 @@ class Level {
     }
 }
 
-test_value(Level.get(0), 20)
-test_value(Level.get(1), 19, (v) => v !== Level.All[1])
+test_value(Level.get(0), 20 + dc)
+test_value(Level.get(1), 19 + dc, (v) => v !== Level.All[1])
 
 bino_config().handlers.set(Level, (x) => (x instanceof Level) ? [Level.All.indexOf(x)] : Level.get(x[0]))
 
@@ -169,16 +173,16 @@ test_value(value_settings, 2, (v) => v.size === value_settings.size)
 value_settings.size.y = 100000
 test_value(value_settings, 2, (v) => v.size === value_settings.size)
 bino_config().refs.delete(value_settings, 0)
-test_value(value_settings, 21, (v) => v.size !== value_settings.size)
+test_value(value_settings, 21 + dc * 2, (v) => v.size !== value_settings.size)
 value_settings.size.y = 10
-test_value(value_settings, 21 - 5, (v) => v.size !== value_settings.size)
+test_value(value_settings, 21 - 5 + dc * 2, (v) => v.size !== value_settings.size)
 
 class Res {
     static Wood = new Res()
     static Gold = new Res()
 }
 
-test_value(Res.Wood, 8, (v) => v !== Res.Wood)
+test_value(Res.Wood, 8 + dc, (v) => v !== Res.Wood)
 
 bino_config().refs.set([Res.Wood, Res.Gold], "Res")
 
@@ -187,7 +191,8 @@ test_value([Res.Wood, Res.Wood], 12, (v) => v[0] === Res.Wood && v[1] === Res.Wo
 test_value([Res.Wood, Res.Gold], 15, (v) => v[0] === Res.Wood && v[1] === Res.Gold)
 
 test_value({ inv: new Set([Res.Gold]) },
-    1 + 1 + 2 + // object
+    1 + 1 + 1 + // object
+    1 + 1 + 1 + // desc
     1 + 1 + 3 + // inv
     1 + 1 + 3 + // Set
     1 + 1 + 1 + 1 + // set
@@ -208,7 +213,7 @@ const thing = new Thing()
 world.things.push(thing)
 thing.world = world
 
-test_value(world, 51, (v) => world == world.things[0].world)
+test_value(world, 51 + dc * 2, (v) => world == world.things[0].world)
 
 for (const i of range(10)) {
     const thing = new Thing()
@@ -216,13 +221,13 @@ for (const i of range(10)) {
     thing.world = world
 }
 
-test_value(world, 51 + 10 * 8, (v) => world.things[2].world && world == world.things[4].world)
+test_value(world, 51 + 10 * 5 + dc * 2, (v) => world.things[2].world && world == world.things[4].world)
 
 world.map = new Map()
 world.map.set(world, world)
 world.things.length = 2
 
-test_value(world, 71, (v) => world === world.map.get(world))
+test_value(world, 71 + dc - 1, (v) => world === world.map.get(world))
 
 test_value({
     name: "Maanoo",
@@ -230,7 +235,7 @@ test_value({
     validator: /\w+/,
     callback: (res) => console.log(res),
     data: new ArrayBuffer(10)
-}, 129)
+}, 129 + dc * 2)
 
 
 test_value(range(100).map(i => 128 + i), 1 + 1 + 100 * (1 + 2 + 1))

@@ -54,6 +54,7 @@ function test_value(value, payload = skip, condition) {
     // console.log(value)
     // buffer_print(encoded)
     // console.log(decoded)
+    // console.log("\n", layout_value(value))
 
     if (!check_redo(encoded, decoded)) {
         console.error("value:", value, decoded)
@@ -64,7 +65,7 @@ function test_value(value, payload = skip, condition) {
         return error("FAIL check equals")
     }
     if (payload != skip && payload_bytes != payload) {
-        console.error("value:", value, payload_bytes, payload - payload_bytes)
+        console.error("value:", value, payload_bytes, "expected:", payload, payload - payload_bytes)
         return error("FAIL check length")
     }
     if (condition && condition(decoded) !== true) {
@@ -73,12 +74,17 @@ function test_value(value, payload = skip, condition) {
     }
 }
 
-function debug_value(value, expected) {
+function layout_value(value) {
     const config = bino_config()
     const writer = config.BinaryWriter
     config.BinaryWriter = DebugBinaryWriter
     const layout = bino_encode(value)
     config.BinaryWriter = writer
+    return layout
+}
+
+function debug_value(value, expected) {
+    const layout = layout_value(value)
 
     if (!expected) {
         console.log()

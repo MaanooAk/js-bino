@@ -189,6 +189,20 @@ function bino_encode(value) {
         constructor(value) { this.value = value }
     }
 
+    class DescHolder {
+        constructor(c, fields) {
+            this.c = c
+            this.fields = fields
+        }
+    }
+
+    function desc_key(c, fields) {
+        return [c, ...fields]
+            .map(i => i >= 0 ? "+" + i.toString(32) : i.toString(32))
+            .join("")
+    }
+    const descs = new Map()
+
     const refs = config.refs
 
     const table_refs = new Map()
@@ -217,6 +231,8 @@ function bino_encode(value) {
             }
             encoded = holder
 
+        } else if (value instanceof ArrayBuffer) {
+
         } else if (type === "object") {
 
             if (Array.isArray(value)) {
@@ -232,8 +248,20 @@ function bino_encode(value) {
                     for (const i of entries) explore(i)
 
                 } else {
-                    const entries = Object.entries(value).flat()
-                    for (const i of entries) explore(i)
+                    const c_id = explore(c)
+                    const fields_ids = Object.keys(value).map(explore_each)
+
+                    const key = desc_key(c_id, fields_ids)
+                    if (!descs.has(key)) {
+                        const desc = new DescHolder(c_id, fields_ids)
+                        const id = values.length
+                        ids.set(desc, id)
+                        values.push(desc)
+                        descs.set(key, id)
+                    }
+
+                    const field_values = Object.values(value)
+                    for (const i of field_values) explore(i)
                 }
             }
 
@@ -248,6 +276,10 @@ function bino_encode(value) {
         values.push(encoded || value)
         return id
     }
+    function explore_each(value) {
+        return explore(value)
+    }
+
     const root_id = explore(value)
 
     const writer = new config.BinaryWriter()
@@ -273,6 +305,8 @@ function bino_encode(value) {
         if (id instanceof IdLookup) return ids.get(ids.get(value))
         return ids.get(id)
     }
+
+    const object_class_id = ids.get(Object)
 
     function output(value) {
         const type = typeof value
@@ -312,8 +346,16 @@ function bino_encode(value) {
             if (value instanceof ArrayBuffer) {
                 return writer.bytes(new Uint8Array(value), 'u', 'U')
             }
-
-
+            if (value instanceof DescHolder) {
+                if (value.c === object_class_id) {
+                    writer.len(value.fields.length, 'e', 'E')
+                } else {
+                    writer.len(value.fields.length, 'p', 'P')
+                    writer.id(value.c)
+                }
+                for (const i of value.fields) writer.id(i)
+                return
+            }
 
             const handler = config.handlers.get(c)
             if (handler) {
@@ -322,17 +364,18 @@ function bino_encode(value) {
                 writer.id(ids_get(c))
                 for (const i of entries) writer.id(ids_get(i))
 
-            } else if (!c || c === Object) {
-                const entries = Object.entries(value).flat()
-                writer.len(entries.length, 'd', 'D')
-                for (const i of entries) writer.id(ids_get(i))
-
             } else {
-                const entries = Object.entries(value).flat()
-                writer.len(entries.length, 'o', 'O')
-                writer.id(ids_get(c))
-                for (const i of entries) writer.id(ids_get(i))
-
+                const key = desc_key(ids_get(c), Object.keys(value).map(i => ids.get(i)))
+                if (descs.has(key)) {
+                    writer.char('o')
+                    writer.id(descs.get(key))
+                    const field_values = Object.values(value)
+                    for (const i of field_values) writer.id(ids_get(i))
+                } else {
+                    const entries = Object.entries(value).flat()
+                    writer.len(entries.length, 'd', 'D')
+                    for (const i of entries) writer.id(ids_get(i))
+                }
             }
             return
         }
@@ -404,6 +447,13 @@ function bino_decode(binary) {
         return i
     }
 
+    class Desc {
+        constructor(c, fields) {
+            this.c = c
+            this.fields = fields
+        }
+    }
+
     function input() {
         const type = reader.char()
         const lower = type.toLowerCase()
@@ -429,6 +479,20 @@ function bino_decode(binary) {
             return array
         }
 
+        if (lower === 'p') {
+            const len = reader.len(type == lower)
+            const c = get_value(reader.id())
+            const array = new Array(len)
+            for (let i = 0; i < len; i++) array[i] = get_value(reader.id())
+            return new Desc(c, array)
+        }
+        if (lower === 'e') {
+            const len = reader.len(type == lower)
+            const array = new Array(len)
+            for (let i = 0; i < len; i++) array[i] = get_value(reader.id())
+            return new Desc(null, array)
+        }
+
         if (lower === 'd') {
             const len = reader.len(type == lower)
             const object = {}
@@ -441,11 +505,9 @@ function bino_decode(binary) {
         }
 
         if (lower === 'o') {
-            const len = reader.len(type == lower)
-            const c = get_value(reader.id())
-            const object = Object.create(c.prototype)
-            for (let i = 0; i < len; i += 2) {
-                const k = get_value(reader.id())
+            const desc = get_value(reader.id())
+            const object = desc.c ? Object.create(desc.c.prototype) : {}
+            for (const k of desc.fields) {
                 object[k] = get_value_or(reader.id())
             }
             incomplete.push(['o', object])
