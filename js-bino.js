@@ -84,7 +84,7 @@ function bino_config(reset = false) {
             return o
         }
 
-        entry() {}
+        entry() { }
 
         byte(value) { const o = this.inc(1); this.view.setUint8(o, value) }
         char(value) { const o = this.inc(1); this.view.setUint8(o, value.charCodeAt(0)); return this }
@@ -224,12 +224,17 @@ function bino_encode(value) {
 
             } else {
                 const c = value.constructor
-                if (c && c !== Object) {
-                    explore(c, new ClassHolder(c))
-                }
+                if (!ids.has(c)) explore(c, new ClassHolder(c))
                 const handler = config.handlers.get(c)
-                const entries = handler ? (handler.encode ?? handler)(value) : Object.entries(value).flat()
-                for (const i of entries) explore(i)
+
+                if (handler) {
+                    const entries = (handler.encode ?? handler)(value)
+                    for (const i of entries) explore(i)
+
+                } else {
+                    const entries = Object.entries(value).flat()
+                    for (const i of entries) explore(i)
+                }
             }
 
         } else if (type == "function") {
@@ -308,16 +313,26 @@ function bino_encode(value) {
                 return writer.bytes(new Uint8Array(value), 'u', 'U')
             }
 
+
+
             const handler = config.handlers.get(c)
-            const entries = handler ? (handler.encode ?? handler)(value) : Object.entries(value).flat()
-            if (!c || c === Object) {
+            if (handler) {
+                const entries = (handler.encode ?? handler)(value)
+                writer.len(entries.length, 'm', 'M')
+                writer.id(ids_get(c))
+                for (const i of entries) writer.id(ids_get(i))
+
+            } else if (!c || c === Object) {
+                const entries = Object.entries(value).flat()
                 writer.len(entries.length, 'd', 'D')
+                for (const i of entries) writer.id(ids_get(i))
+
             } else {
+                const entries = Object.entries(value).flat()
                 writer.len(entries.length, 'o', 'O')
                 writer.id(ids_get(c))
-            }
-            for (const i of entries) {
-                writer.id(ids_get(i))
+                for (const i of entries) writer.id(ids_get(i))
+
             }
             return
         }
@@ -428,22 +443,25 @@ function bino_decode(binary) {
         if (lower === 'o') {
             const len = reader.len(type == lower)
             const c = get_value(reader.id())
+            const object = Object.create(c.prototype)
+            for (let i = 0; i < len; i += 2) {
+                const k = get_value(reader.id())
+                object[k] = get_value_or(reader.id())
+            }
+            incomplete.push(['o', object])
+            return object
+        }
+        if (lower === 'm') {
+            const len = reader.len(type == lower)
+            const c = get_value(reader.id())
             const handler = config.handlers.get(c)
-            if (!handler) {
-                const object = Object.create(c.prototype)
-                for (let i = 0; i < len; i += 2) {
-                    const k = get_value(reader.id())
-                    object[k] = get_value_or(reader.id())
-                }
-                incomplete.push(['o', object])
-                return object
-            } else if (handler.init) {
+            if (handler.init) {
                 const object = handler.init()
                 const entries = new Array(len)
                 for (let i = 0; i < len; i++) {
                     entries[i] = get_value_or(reader.id())
                 }
-                incomplete.push(['h', object, entries, handler])
+                incomplete.push(['m', object, entries, handler])
                 return object
             } else {
                 const entries = new Array(len)
@@ -453,6 +471,7 @@ function bino_decode(binary) {
                 return (handler.decode ?? handler)(entries)
             }
         }
+
         if (lower === 'r') return refs.get(get_value(reader.id()))
         if (lower === 't') {
             const index = reader.len(type == lower)
@@ -471,7 +490,7 @@ function bino_decode(binary) {
         } else if (type === 'd' || type === 'o') {
             for (const k in object) object[k] = get_value(object[k])
 
-        } else if (type === 'h') {
+        } else if (type === 'm') {
             for (let i = 0; i < entries.length; i++) entries[i] = get_value(entries[i])
             handler.fill(object, entries)
         }

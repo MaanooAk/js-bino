@@ -43,10 +43,10 @@ debug_value({
    3: f 0.1
    4: g "100"
    5: o [4] 2 -50 3 -51 4
-   6: o [1] -33 5
+   6: m [1] -33 5
    7: s "validator"
    8: s "\\\\w+"
-   9: o [2] -30 8 -21
+   9: m [2] -30 8 -21
   10: s "callback"
   11: l "(res) => console.log(res)"
   12: u [10] (binary)

@@ -85,8 +85,8 @@ function debug_value(value, expected) {
         console.log(layout)
 
     } else if (layout.trim() !== expected.trim()) {
-        console.error("layout:\n", layout)
-        console.error("expected:\n", expected)
+        console.error("layout:\n  ", layout.trim())
+        console.error("expected:\n  ", expected.trim())
         return error("FAIL check layout")
     }
 
