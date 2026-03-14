@@ -213,7 +213,7 @@ const thing = new Thing()
 world.things.push(thing)
 thing.world = world
 
-test_value(world, 51 + dc * 2, (v) => world == world.things[0].world)
+test_value(world, 51 + dc * 2, (v) => v == v.things[0].world)
 
 for (const i of range(10)) {
     const thing = new Thing()
@@ -221,13 +221,31 @@ for (const i of range(10)) {
     thing.world = world
 }
 
-test_value(world, 51 + 10 * 5 + dc * 2, (v) => world.things[2].world && world == world.things[4].world)
+test_value(world, 51 + 10 * 5 + dc * 2, (v) => v.things[2].world && v == v.things[4].world)
 
 world.map = new Map()
 world.map.set(world, world)
 world.things.length = 2
 
-test_value(world, 71 + dc - 1, (v) => world === world.map.get(world))
+test_value(world, 71 + dc - 1, (v) => v.particles === undefined && v.things.every(i => i.alive === undefined))
+
+class NewWorld {
+    things = []
+    particles = []
+}
+
+bino_config().migrations.set(Thing, (x) => {
+    x.alive = true
+})
+test_decoded(world, 71 + dc - 1, (v) => v.things.every(i => i.alive === true))
+
+bino_config().migrations.set(World, (x) => {
+    Object.setPrototypeOf(x, Object.getPrototypeOf(new NewWorld()))
+    x.particles = []
+})
+test_decoded(world, 71 + dc - 1, (v) => (v instanceof NewWorld) &&
+    v.particles.length === 0 && v.things.every(i => i.alive === true))
+
 
 test_value({
     name: "Maanoo",

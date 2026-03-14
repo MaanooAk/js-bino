@@ -157,6 +157,7 @@ function bino_config(reset = false) {
         negatives,
         refs,
         handlers,
+        migrations: new Map(),
         BinaryReader,
         BinaryWriter,
     }
@@ -454,7 +455,7 @@ function bino_decode(binary) {
         }
     }
 
-    function input() {
+    function input(id) {
         const type = reader.char()
         const lower = type.toLowerCase()
 
@@ -475,7 +476,7 @@ function bino_decode(binary) {
             const len = reader.len(type == lower)
             const array = new Array(len)
             for (let i = 0; i < len; i++) array[i] = get_value_or(reader.id())
-            incomplete.push(['a', array])
+            incomplete.push({ type: 'a', object: array })
             return array
         }
 
@@ -500,7 +501,7 @@ function bino_decode(binary) {
                 const k = get_value(reader.id())
                 object[k] = get_value_or(reader.id())
             }
-            incomplete.push(['d', object])
+            incomplete.push({ type: 'd', object, id })
             return object
         }
 
@@ -510,7 +511,7 @@ function bino_decode(binary) {
             for (const k of desc.fields) {
                 object[k] = get_value_or(reader.id())
             }
-            incomplete.push(['o', object])
+            incomplete.push({ type: 'o', object })
             return object
         }
         if (lower === 'm') {
@@ -523,7 +524,7 @@ function bino_decode(binary) {
                 for (let i = 0; i < len; i++) {
                     entries[i] = get_value_or(reader.id())
                 }
-                incomplete.push(['m', object, entries, handler])
+                incomplete.push({ type: 'm', object, entries, handler })
                 return object
             } else {
                 const entries = new Array(len)
@@ -544,13 +545,17 @@ function bino_decode(binary) {
         throw type
     }
 
-    function input_complete([type, object, entries, handler]) {
+    function input_complete({ type, object, entries, handler, id }) {
 
         if (type === 'a') {
             for (let i = 0; i < object.length; i++) object[i] = get_value(object[i])
 
         } else if (type === 'd' || type === 'o') {
             for (const k in object) object[k] = get_value(object[k])
+            if (type === 'o') {
+                const migration = config.migrations.get(object.constructor)
+                if (migration) migration(object)
+            }
 
         } else if (type === 'm') {
             for (let i = 0; i < entries.length; i++) entries[i] = get_value(entries[i])
@@ -559,7 +564,7 @@ function bino_decode(binary) {
     }
 
     for (; id < values.length; id++) {
-        const value = input()
+        const value = input(id)
         values[id] = value
     }
 

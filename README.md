@@ -45,6 +45,12 @@ bino_config().handlers.set(Collection, {
 })
 ```
 
+Migrations:
+```js
+bino_config().handlers.set(Thing,
+    (i) => i.new_field = new_field_default || i.init_new_field())
+```
+
 ### Specification
 
 Format:

@@ -74,6 +74,21 @@ function test_value(value, payload = skip, condition) {
     }
 }
 
+function test_decoded(value, payload = skip, condition) {
+    const encoded = bino_encode(value)
+    const decoded = bino_decode(encoded)
+    const payload_bytes = encoded.byteLength - header_size
+
+    if (payload != skip && payload_bytes != payload) {
+        console.error("value:", value, payload_bytes, "expected:", payload, payload - payload_bytes)
+        return error("FAIL check length")
+    }
+    if (condition && condition(decoded) !== true) {
+        console.error("value:", value, "decoded:", decoded)
+        return error("FAIL check condition")
+    }
+}
+
 function debug_value(value, expected) {
     const layout = DebugBinaryWriter.encode(value)
 
